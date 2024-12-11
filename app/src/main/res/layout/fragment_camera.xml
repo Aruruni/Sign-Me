@@ -1,0 +1,57 @@
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/preview_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:layout_margin="21dp"/>
+        <LinearLayout
+            android:layout_marginTop="30dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            android:padding="30dp"
+            android:gravity="center"
+            android:layout_gravity="center|top">
+
+            <ImageButton
+                android:id="@+id/flash_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_flash_off"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Toggle Flash" />
+
+            <Space
+                android:layout_width="1.7in"
+                android:layout_height="wrap_content" />
+
+            <ImageButton
+                android:id="@+id/switch_camera_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_camera_switch"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Switch Camera" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/result_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:background="#80000000"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:text="Detection Result"
+            android:gravity="center"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="25dp" />
+
+    </FrameLayout>
+</layout>

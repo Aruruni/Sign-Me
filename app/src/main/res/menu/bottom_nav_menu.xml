@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_camera"
+        android:icon="@drawable/ic_camera"
+        android:title="Translate"
+        android:iconTint="@color/black"/>
+    <item
+        android:id="@+id/nav_text_input"
+        android:icon="@drawable/ic_text_input"
+        android:title="Write"
+        android:iconTint="@color/black"/>
+</menu>
