@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.cc17.signme"
+    namespace = "com.capstone.signme"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.cc17.signme"
+        applicationId = "com.capstone.signme"
         minSdk = 28
         targetSdk = 34
         versionCode = 1
@@ -58,6 +58,9 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.vision.interfaces)
+    implementation(libs.play.services.vision.common)
+    implementation(libs.play.services.tflite.gpu)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
