@@ -1,33 +1,47 @@
 A
 Ako
+Asawa
 B
+Bahay
 Boss
 C
 D
+Dyip
 E
 F
 G
 H
+Halik
+Hindi
 I
 Ikaw
+Ingat ka
 Isip
 Ito
 J
 K
+Kamusta
 L
 M
 Mabuti
 Mahal Kita
+Mawalang Galang
 N
+Naakit
 Nanay
+Ngayon
 O
+Oo
 P
+Pangalan
 Q
 R
 S
+Saglit
 Sa akin
 Saglit
 Seryoso
+Siguro
 T
 Tahimik
 Tatay
@@ -37,4 +51,5 @@ V
 W
 X
 Y
+Yakap
 Z
