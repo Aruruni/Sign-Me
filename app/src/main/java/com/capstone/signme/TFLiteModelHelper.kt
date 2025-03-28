@@ -3,27 +3,23 @@ package com.capstone.signme
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.SystemClock
-import android.util.Log
-import com.google.android.gms.tflite.gpu.GpuDelegate
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.common.ops.CastOp
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.io.BufferedReader
-import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
-class EnhancedTFLiteModelHelper(
+class TFLiteModelHelper(
     private val context: Context,
     private val modelName: String,
-    private val labelsName: String = "labels.txt",
+    private val labelsName: String,
     private val detectorListener: DetectorListener? = null
 ) {
 
@@ -61,8 +57,6 @@ class EnhancedTFLiteModelHelper(
         val outputShape = interpreter?.getOutputTensor(0)?.shape() ?: return
         isYolo = outputShape.size >= 3
 
-        // Load labels
-        try {
             val inputStream: InputStream = context.assets.open(labelsName)
             val reader = BufferedReader(InputStreamReader(inputStream))
 
@@ -74,12 +68,6 @@ class EnhancedTFLiteModelHelper(
             reader.close()
             inputStream.close()
             numClasses = labels.size
-        } catch (e: IOException) {
-            Log.e("EnhancedTFLiteModelHelper", "Error loading labels", e)
-            // Default to original class if labels file isn't found
-            labels = mutableListOf("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z")
-            numClasses = labels.size
-        }
     }
 
     private fun loadModelFile(context: Context, modelName: String): MappedByteBuffer {
@@ -97,15 +85,6 @@ class EnhancedTFLiteModelHelper(
         interpreter = null
     }
 
-    // Method compatible with your original implementation
-    fun detectObjects(bitmap: Bitmap): String {
-        val result = detect(bitmap)
-        return if (result.isNotEmpty()) {
-            result.maxByOrNull { it.cnf }?.clsName ?: "Unknown"
-        } else {
-            "Unknown"
-        }
-    }
 
     // Enhanced detection method that returns bounding boxes
     fun detect(frame: Bitmap): List<BoundingBox> {
@@ -264,7 +243,7 @@ class EnhancedTFLiteModelHelper(
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.3F
+        private const val CONFIDENCE_THRESHOLD = 0.5F
         private const val IOU_THRESHOLD = 0.5F
     }
 }

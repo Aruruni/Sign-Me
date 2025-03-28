@@ -38,7 +38,26 @@
                 android:contentDescription="Toggle Flash" />
 
             <Space
-                android:layout_width="1.7in"
+                android:layout_width="0.4in"
+                android:layout_height="wrap_content" />
+
+            <Button
+                android:id="@+id/switch_model_button"
+                android:layout_width="98dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|center_horizontal"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxWidth="80dp"
+                android:minWidth="80dp"
+                android:padding="4dp"
+                android:text="Switch to ###"
+                android:backgroundTint="@color/white"
+                android:textColor="@color/black"/>
+
+
+            <Space
+                android:layout_width="0.4in"
                 android:layout_height="wrap_content" />
 
             <ImageButton
@@ -48,6 +67,9 @@
                 android:src="@drawable/ic_camera_switch"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Switch Camera" />
+
+
+
         </LinearLayout>
         <TextView
             android:id="@+id/result_text"
@@ -60,7 +82,7 @@
             android:text="Detection Result"
             android:gravity="center"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_marginBottom="25dp" />
+            android:layout_margin="21dp"/>
 
     </FrameLayout>
 

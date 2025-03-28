@@ -11,7 +11,6 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 class MainActivity : AppCompatActivity() {
     private var cameraFragment: CameraFragment? = null
     private var textInputFragment: TextInputFragment? = null
-    private lateinit var modelHelper: EnhancedTFLiteModelHelper
     private lateinit var resultTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,7 +19,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         resultTextView = findViewById(R.id.result_text_main)
-        modelHelper = EnhancedTFLiteModelHelper(this, "model.tflite")
 
         val bottomNavBar = findViewById<BottomNavigationView>(R.id.bottom_nav_bar)
         val darkColor = ContextCompat.getColorStateList(this, android.R.color.black)
@@ -69,10 +67,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        modelHelper.close()
-
-
-    }
 }
