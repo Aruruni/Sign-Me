@@ -38,7 +38,7 @@
                 android:contentDescription="Toggle Flash" />
 
             <Space
-                android:layout_width="0.4in"
+                android:layout_width="64dp"
                 android:layout_height="wrap_content" />
 
             <Button
@@ -57,7 +57,7 @@
 
 
             <Space
-                android:layout_width="0.4in"
+                android:layout_width="64dp"
                 android:layout_height="wrap_content" />
 
             <ImageButton

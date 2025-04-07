@@ -252,8 +252,25 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
                 lastUpdateTime = currentTime
 
-                // **Update text view immediately**
-                resultTextView.text = wordBuffer.toString().trim()
+                // Limit the number of lines to 2 by checking the text length
+                val wordText = wordBuffer.toString().trim()
+
+                // Calculate how much text fits in two lines. We'll add logic to manage it.
+                val maxLines = 2
+                val maxCharactersPerLine = 20 // You can adjust this depending on your TextView's width
+
+                // Split the text into lines of a specific length
+                val lines = wordText.chunked(maxCharactersPerLine)
+
+                // If the number of lines exceeds 2, we only keep the most recent lines
+                val displayedLines = if (lines.size > maxLines) {
+                    lines.takeLast(maxLines) // Get the last 2 lines
+                } else {
+                    lines
+                }
+
+                // Combine the lines back into a single string with line breaks
+                resultTextView.text = displayedLines.joinToString("\n")
 
                 // Remove the full word after 6 seconds of inactivity
                 handler.removeCallbacks(clearTextRunnable)
@@ -261,6 +278,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
             }
         }
     }
+
 
     // Runnable to clear the word after 6 seconds
     private val clearTextRunnable = Runnable {

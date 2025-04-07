@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="0dp"
             android:layout_marginEnd="10dp"
-            android:text="Font Size:18sp"/>
+            android:text="Font Size:****"/>
 
         <Button
             android:id="@+id/submit_button"

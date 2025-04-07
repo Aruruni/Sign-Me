@@ -22,6 +22,14 @@ class TFLiteModelHelper(
     private val labelsName: String,
     private val detectorListener: DetectorListener? = null
 ) {
+    companion object {
+        private const val INPUT_MEAN = 0f
+        private const val INPUT_STANDARD_DEVIATION = 255f
+        private val INPUT_IMAGE_TYPE = DataType.FLOAT32
+        private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
+        private const val CONFIDENCE_THRESHOLD = 0.5F
+        private const val IOU_THRESHOLD = 0.5F
+    }
 
     private var interpreter: Interpreter? = null
     private var labels = mutableListOf<String>()
@@ -29,7 +37,7 @@ class TFLiteModelHelper(
     private var tensorWidth = 0
     private var tensorHeight = 0
     private var numClasses = 0
-    private var isYolo = false // Flag to determine if using YOLO model or standard classification
+    private var isYolo = false
 
     private val imageProcessor = ImageProcessor.Builder()
         .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
@@ -238,12 +246,4 @@ class TFLiteModelHelper(
         fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)
     }
 
-    companion object {
-        private const val INPUT_MEAN = 0f
-        private const val INPUT_STANDARD_DEVIATION = 255f
-        private val INPUT_IMAGE_TYPE = DataType.FLOAT32
-        private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.5F
-        private const val IOU_THRESHOLD = 0.5F
-    }
 }
