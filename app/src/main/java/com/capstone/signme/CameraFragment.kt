@@ -221,6 +221,23 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         overlayView.invalidate()
     }
 
+    private var isSingleLabelMode = false
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        resultTextView.setOnClickListener {
+            isSingleLabelMode = !isSingleLabelMode
+            val modeText = if (isSingleLabelMode) {
+                "Single Label Mode"
+            } else {
+                "Continuous Text Mode"
+            }
+            Toast.makeText(requireContext(), "Switched to $modeText", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
         activity?.runOnUiThread {
             overlayView.apply {
@@ -229,55 +246,52 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
             }
 
             if (boundingBoxes.isNotEmpty()) {
-                val detectedLabel = boundingBoxes.first().clsName // Get the first detected label
+                val detectedLabel = boundingBoxes.first().clsName
                 val currentTime = System.currentTimeMillis()
 
-                // Prevent repeated detections of the same label
                 if (detectedLabel == lastDetectedLabel) {
                     return@runOnUiThread
                 }
 
-                lastDetectedLabel = detectedLabel // Store last detected label
+                lastDetectedLabel = detectedLabel
 
-                if (detectedLabel.length == 1) { // If it's a single letter (A-Z)
-                    if (currentTime - lastUpdateTime > 2000) {
-                        wordBuffer.append(" ") // Add space after 2s of inactivity
-                    }
-                    wordBuffer.append(detectedLabel) // Add detected letter
-                } else { // If it's a word/phrase (e.g., "Good morning")
-                    wordBuffer.append(" ") // Add a space instead of appending the phrase
-                    wordBuffer.append(detectedLabel)
-                    wordBuffer.append(" ")
-                }
-
-                lastUpdateTime = currentTime
-
-                // Limit the number of lines to 2 by checking the text length
-                val wordText = wordBuffer.toString().trim()
-
-                // Calculate how much text fits in two lines. We'll add logic to manage it.
-                val maxLines = 2
-                val maxCharactersPerLine = 20 // You can adjust this depending on your TextView's width
-
-                // Split the text into lines of a specific length
-                val lines = wordText.chunked(maxCharactersPerLine)
-
-                // If the number of lines exceeds 2, we only keep the most recent lines
-                val displayedLines = if (lines.size > maxLines) {
-                    lines.takeLast(maxLines) // Get the last 2 lines
+                if (isSingleLabelMode) {
+                    // Display only the latest label
+                    resultTextView.text = detectedLabel
                 } else {
-                    lines
+                    // Original logic
+                    if (detectedLabel.length == 1) {
+                        if (currentTime - lastUpdateTime > 2000) {
+                            wordBuffer.append(" ")
+                        }
+                        wordBuffer.append(detectedLabel)
+                    } else {
+                        wordBuffer.append(" ")
+                        wordBuffer.append(detectedLabel)
+                        wordBuffer.append(" ")
+                    }
+
+                    lastUpdateTime = currentTime
+
+                    val wordText = wordBuffer.toString().trim()
+                    val maxLines = 2
+                    val maxCharactersPerLine = 20
+                    val lines = wordText.chunked(maxCharactersPerLine)
+                    val displayedLines = if (lines.size > maxLines) {
+                        lines.takeLast(maxLines)
+                    } else {
+                        lines
+                    }
+
+                    resultTextView.text = displayedLines.joinToString("\n")
+
+                    handler.removeCallbacks(clearTextRunnable)
+                    handler.postDelayed(clearTextRunnable, 6000)
                 }
-
-                // Combine the lines back into a single string with line breaks
-                resultTextView.text = displayedLines.joinToString("\n")
-
-                // Remove the full word after 6 seconds of inactivity
-                handler.removeCallbacks(clearTextRunnable)
-                handler.postDelayed(clearTextRunnable, 6000)
             }
         }
     }
+
 
 
     // Runnable to clear the word after 6 seconds
