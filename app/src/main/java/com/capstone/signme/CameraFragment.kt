@@ -22,7 +22,6 @@ import androidx.appcompat.widget.PopupMenu
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-
 class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
     private var currentModelIndex = 0
@@ -69,8 +68,10 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         resultTextView = view.findViewById(R.id.result_text)
         flashButton = view.findViewById(R.id.flash_button)
         switchCameraButton = view.findViewById(R.id.switch_camera_button)
-        listPopupButton.text = modelNames[currentModelIndex]
+        listPopupButton = view.findViewById(R.id.list_popup_button)
 
+        // 🔹 Set initial button text to current model name
+        listPopupButton.text = modelNames[currentModelIndex]
 
         // Initialize with default model
         initializeDetector(models[currentModelIndex].first, models[currentModelIndex].second)
@@ -105,7 +106,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
                 val (newModel, newLabels) = models[currentModelIndex]
                 initializeDetector(newModel, newLabels)
 
-                // Update button text to reflect mode
+                // 🔹 Update button text to reflect mode
                 listPopupButton.text = modelNames[currentModelIndex]
 
                 Toast.makeText(requireContext(), "Switched to ${modelNames[currentModelIndex]}", Toast.LENGTH_SHORT).show()
