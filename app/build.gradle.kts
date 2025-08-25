@@ -45,6 +45,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.material.v1110)
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.support)
     implementation(libs.androidx.camera.core)

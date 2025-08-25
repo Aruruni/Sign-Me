@@ -1,34 +1,35 @@
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
-
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <FrameLayout
-
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Camera preview -->
         <androidx.camera.view.PreviewView
             android:id="@+id/preview_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:layout_margin="21dp"/>
+            android:layout_margin="21dp" />
 
+        <!-- Overlay for bounding boxes -->
         <com.capstone.signme.OverlayView
             android:id="@+id/overlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-
+        <!-- Top controls -->
         <LinearLayout
             android:layout_marginTop="30dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
             android:orientation="horizontal"
             android:padding="30dp"
             android:gravity="center"
-            android:layout_gravity="center|top">
+            android:layout_gravity="top|center">
 
+            <!-- Flash button -->
             <ImageButton
                 android:id="@+id/flash_button"
                 android:layout_width="wrap_content"
@@ -38,28 +39,24 @@
                 android:contentDescription="Toggle Flash" />
 
             <Space
-                android:layout_width="64dp"
+                android:layout_width="48dp"
                 android:layout_height="wrap_content" />
 
+            <!-- Popup menu button -->
             <Button
-                android:id="@+id/switch_model_button"
-                android:layout_width="98dp"
+                android:id="@+id/list_popup_button"
+                android:layout_width="100dp"
                 android:layout_height="wrap_content"
-                android:layout_gravity="top|center_horizontal"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxWidth="80dp"
-                android:minWidth="80dp"
-                android:padding="4dp"
-                android:text="Switch to ###"
-                android:backgroundTint="@color/white"
-                android:textColor="@color/black"/>
-
+                android:text="Select Mode"
+                android:backgroundTint="@android:color/white"
+                android:textColor="@android:color/black"
+                android:padding="8dp" />
 
             <Space
-                android:layout_width="64dp"
+                android:layout_width="48dp"
                 android:layout_height="wrap_content" />
 
+            <!-- Switch camera button -->
             <ImageButton
                 android:id="@+id/switch_camera_button"
                 android:layout_width="wrap_content"
@@ -68,9 +65,9 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Switch Camera" />
 
-
-
         </LinearLayout>
+
+        <!-- Result text at bottom -->
         <TextView
             android:id="@+id/result_text"
             android:layout_width="wrap_content"
@@ -82,9 +79,8 @@
             android:text="Detection Result"
             android:gravity="center"
             android:layout_gravity="bottom|center_horizontal"
-            android:layout_margin="21dp"/>
+            android:layout_margin="21dp" />
 
     </FrameLayout>
-
 
 </layout>

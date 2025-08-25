@@ -8,9 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
@@ -20,38 +18,48 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.appcompat.widget.PopupMenu
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+
 class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
-    private lateinit var switchModelButton: Button
-    private var isModelA = true // Tracks the active model
+    private var currentModelIndex = 0
+
+    // List of models and labels
+    private val models = listOf(
+        Pair("alphabets.tflite", "alphabetslabel.txt"),
+        Pair("filipino.tflite", "filipinolabel.txt"),
+        Pair("english.tflite", "englishlabel.txt")
+    )
+
+    private val modelNames = listOf("Alphabets", "Filipino", "English")
 
     private lateinit var previewView: PreviewView
     private lateinit var detector: TFLiteModelHelper
     private lateinit var overlayView: OverlayView
     private lateinit var cameraExecutor: ExecutorService
 
-    private val wordBuffer = StringBuilder() // Stores letters to form words
-    private var lastUpdateTime = 0L // Tracks last detected letter time
+    private lateinit var flashButton: ImageButton
+    private lateinit var switchCameraButton: ImageButton
+    private lateinit var listPopupButton: Button
+    private lateinit var resultTextView: TextView
 
-    private var lastDetectedLabel: String? = null
+    private var currentCameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var isFlashEnabled = false
 
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private lateinit var camera: Camera
     private var cameraProvider: ProcessCameraProvider? = null
 
-    private val CAMERA_PERMISSION_CODE = 100
-    private lateinit var flashButton: ImageButton
-    private lateinit var switchCameraButton: ImageButton
-    private var currentCameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-    private var isFlashEnabled = false
-    private lateinit var resultTextView: TextView
-
     private val handler = Handler(Looper.getMainLooper())
 
+    private val wordBuffer = StringBuilder()
+    private var lastUpdateTime = 0L
+    private var lastDetectedLabel: String? = null
+    private var isSingleLabelMode = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_camera, container, false)
@@ -59,33 +67,53 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         previewView = view.findViewById(R.id.preview_view)
         overlayView = view.findViewById(R.id.overlay)
         resultTextView = view.findViewById(R.id.result_text)
-        switchModelButton = view.findViewById(R.id.switch_model_button)
-
-        // Initialize detector with the fragment as the DetectorListener
-
-        initializeDetector("modelFSL.tflite", "labelsFSL.txt")
-
-        switchModelButton.setOnClickListener {
-            switchModel()
-        }
-
-
         flashButton = view.findViewById(R.id.flash_button)
         switchCameraButton = view.findViewById(R.id.switch_camera_button)
+        listPopupButton.text = modelNames[currentModelIndex]
 
+
+        // Initialize with default model
+        initializeDetector(models[currentModelIndex].first, models[currentModelIndex].second)
+
+        // Setup popup menu for model switching
+        listPopupButton.setOnClickListener { showModelPopupMenu(it) }
+
+        // Setup camera controls
+        setupCameraControls()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Request camera permission
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED) {
-            setupCameraControls()
             startCamera()
         } else {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
-            startCamera()
         }
 
         return view
+    }
+
+    private fun showModelPopupMenu(anchor: View) {
+        val popupMenu = PopupMenu(requireContext(), anchor)
+        modelNames.forEachIndexed { index, name ->
+            popupMenu.menu.add(Menu.NONE, index, index, name)
+        }
+
+        popupMenu.setOnMenuItemClickListener { item ->
+            val position = item.itemId
+            if (position != currentModelIndex) {
+                currentModelIndex = position
+                val (newModel, newLabels) = models[currentModelIndex]
+                initializeDetector(newModel, newLabels)
+
+                // Update button text to reflect mode
+                listPopupButton.text = modelNames[currentModelIndex]
+
+                Toast.makeText(requireContext(), "Switched to ${modelNames[currentModelIndex]}", Toast.LENGTH_SHORT).show()
+                Log.d("ModelSwitch", "Switched to $newModel with labels: $newLabels")
+            }
+            true
+        }
+        popupMenu.show()
     }
 
     private fun initializeDetector(modelName: String, labelsName: String) {
@@ -94,47 +122,24 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
             modelName = modelName,
             labelsName = labelsName,
             detectorListener = this
-
         )
-        switchModelButton.text = if (isModelA) "Switch to ASL" else "Switch to FSL"
-    }
-
-    private fun switchModel() {
-        isModelA = !isModelA // Toggle model
-        val newModel = if (isModelA) "modelFSL.tflite" else "modelASL.tflite"
-        val newLabels = if (isModelA) "labelsFSL.txt" else "labelsASL.txt"
-
-        initializeDetector(newModel, newLabels) // Reload model and labels
-
-        Toast.makeText(requireContext(), "Changing Language", Toast.LENGTH_SHORT).show()
-        Log.d("ModelSwitch", "Switched to $newModel with labels: $newLabels")
     }
 
     private fun setupCameraControls() {
-        // Flash button toggle
-        flashButton.setOnClickListener {
-            toggleFlash()
-        }
-
-        // Camera switch button
-        switchCameraButton.setOnClickListener {
-            switchCamera()
-        }
+        flashButton.setOnClickListener { toggleFlash() }
+        switchCameraButton.setOnClickListener { switchCamera() }
     }
+
     private fun toggleFlash() {
         if (::camera.isInitialized) {
             isFlashEnabled = !isFlashEnabled
-            camera.cameraInfo.hasFlashUnit().let { hasFlash ->
-                if (hasFlash) {
-                    camera.cameraControl.enableTorch(isFlashEnabled)
-                    // Update button appearance or icon based on flash state
-                    flashButton.setImageResource(
-                        if (isFlashEnabled) R.drawable.ic_flash_on
-                        else R.drawable.ic_flash_off
-                    )
-                } else {
-                    Toast.makeText(requireContext(), "Flash not available", Toast.LENGTH_SHORT).show()
-                }
+            if (camera.cameraInfo.hasFlashUnit()) {
+                camera.cameraControl.enableTorch(isFlashEnabled)
+                flashButton.setImageResource(
+                    if (isFlashEnabled) R.drawable.ic_flash_on else R.drawable.ic_flash_off
+                )
+            } else {
+                Toast.makeText(requireContext(), "Flash not available", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -148,7 +153,6 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         startCamera()
     }
 
-
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
@@ -159,8 +163,6 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
     private fun bindCameraUseCases() {
         val cameraProvider = cameraProvider ?: throw IllegalStateException("Camera initialization failed.")
-
-        val cameraSelector = currentCameraSelector
 
         preview = Preview.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
@@ -199,8 +201,8 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         try {
             cameraProvider.unbindAll()
             camera = cameraProvider.bindToLifecycle(
-                viewLifecycleOwner, // Use viewLifecycleOwner to manage lifecycle correctly
-                cameraSelector,
+                viewLifecycleOwner,
+                currentCameraSelector,
                 preview,
                 imageAnalyzer
             )
@@ -216,27 +218,19 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         detector.close()
     }
 
-    // DetectorListener implementation
     override fun onEmptyDetect() {
         overlayView.invalidate()
     }
-
-    private var isSingleLabelMode = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         resultTextView.setOnClickListener {
             isSingleLabelMode = !isSingleLabelMode
-            val modeText = if (isSingleLabelMode) {
-                "Single Label Mode"
-            } else {
-                "Continuous Text Mode"
-            }
+            val modeText = if (isSingleLabelMode) "Single Label Mode" else "Continuous Text Mode"
             Toast.makeText(requireContext(), "Switched to $modeText", Toast.LENGTH_SHORT).show()
         }
     }
-
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
         activity?.runOnUiThread {
@@ -249,26 +243,17 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
                 val detectedLabel = boundingBoxes.first().clsName
                 val currentTime = System.currentTimeMillis()
 
-                if (detectedLabel == lastDetectedLabel) {
-                    return@runOnUiThread
-                }
-
+                if (detectedLabel == lastDetectedLabel) return@runOnUiThread
                 lastDetectedLabel = detectedLabel
 
                 if (isSingleLabelMode) {
-                    // Display only the latest label
                     resultTextView.text = detectedLabel
                 } else {
-                    // Original logic
                     if (detectedLabel.length == 1) {
-                        if (currentTime - lastUpdateTime > 2000) {
-                            wordBuffer.append(" ")
-                        }
+                        if (currentTime - lastUpdateTime > 2000) wordBuffer.append(" ")
                         wordBuffer.append(detectedLabel)
                     } else {
-                        wordBuffer.append(" ")
-                        wordBuffer.append(detectedLabel)
-                        wordBuffer.append(" ")
+                        wordBuffer.append(" $detectedLabel ")
                     }
 
                     lastUpdateTime = currentTime
@@ -277,11 +262,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
                     val maxLines = 2
                     val maxCharactersPerLine = 20
                     val lines = wordText.chunked(maxCharactersPerLine)
-                    val displayedLines = if (lines.size > maxLines) {
-                        lines.takeLast(maxLines)
-                    } else {
-                        lines
-                    }
+                    val displayedLines = if (lines.size > maxLines) lines.takeLast(maxLines) else lines
 
                     resultTextView.text = displayedLines.joinToString("\n")
 
@@ -292,24 +273,16 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         }
     }
 
-
-
-    // Runnable to clear the word after 6 seconds
     private val clearTextRunnable = Runnable {
         activity?.runOnUiThread {
-            wordBuffer.clear() // Clear entire buffer
-            resultTextView.text = "" // Clear UI
+            wordBuffer.clear()
+            resultTextView.text = ""
             Log.d("WordFormation", "Full word cleared after 6 seconds")
         }
     }
 
-
-
-
-
-
     companion object {
         private const val TAG = "CameraFragment"
+        private const val CAMERA_PERMISSION_CODE = 100
     }
-
 }
