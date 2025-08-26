@@ -67,6 +67,40 @@
 
         </LinearLayout>
 
+        <!-- Threshold controls (SeekBar + label), hidden by default -->
+        <LinearLayout
+            android:id="@+id/threshold_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginStart="30dp"
+            android:layout_marginEnd="30dp"
+            android:layout_marginBottom="100dp"
+            android:background="@android:color/white"
+            android:elevation="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="5dp"
+            android:visibility="gone">
+
+            <SeekBar
+                android:id="@+id/threshold_seekbar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="40"
+                android:progress="10" /> <!-- default 50% (40 + 10 = 50) -->
+
+            <TextView
+                android:id="@+id/threshold_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:text="50%"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Result text at bottom -->
         <TextView
             android:id="@+id/result_text"

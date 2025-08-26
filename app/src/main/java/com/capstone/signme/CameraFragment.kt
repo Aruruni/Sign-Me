@@ -1,6 +1,7 @@
 package com.capstone.signme
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -9,10 +10,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.*
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.TextView
-import android.widget.Toast
+import android.view.animation.AnimationUtils
+import android.widget.*
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -45,6 +44,11 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
     private lateinit var listPopupButton: Button
     private lateinit var resultTextView: TextView
 
+    // 🔹 Threshold UI
+    private lateinit var thresholdContainer: View
+    private lateinit var thresholdSeekBar: SeekBar
+    private lateinit var thresholdText: TextView
+
     private var currentCameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     private var isFlashEnabled = false
 
@@ -60,6 +64,9 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
     private var lastDetectedLabel: String? = null
     private var isSingleLabelMode = false
 
+    // 🔹 Gesture detector for double-tap
+    private lateinit var gestureDetector: GestureDetector
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_camera, container, false)
 
@@ -69,6 +76,11 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         flashButton = view.findViewById(R.id.flash_button)
         switchCameraButton = view.findViewById(R.id.switch_camera_button)
         listPopupButton = view.findViewById(R.id.list_popup_button)
+
+        // 🔹 Threshold UI
+        thresholdContainer = view.findViewById(R.id.threshold_container)
+        thresholdSeekBar = view.findViewById(R.id.threshold_seekbar)
+        thresholdText = view.findViewById(R.id.threshold_text)
 
         // 🔹 Set initial button text to current model name
         listPopupButton.text = modelNames[currentModelIndex]
@@ -89,6 +101,8 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         } else {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
         }
+
+        setupThresholdSeekBar()
 
         return view
     }
@@ -213,6 +227,23 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         }
     }
 
+    private fun setupThresholdSeekBar() {
+        // default threshold = 50%
+        detector.confidenceThreshold = 0.50f
+        thresholdSeekBar.progress = 10 // because 40% + 10 = 50%
+        thresholdText.text = "50%"
+
+        thresholdSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val threshold = 0.40f + (progress / 100f)
+                detector.confidenceThreshold = threshold
+                thresholdText.text = "${(threshold * 100).toInt()}%"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         cameraExecutor.shutdown()
@@ -223,8 +254,50 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         overlayView.invalidate()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // 🔹 Double-tap shows/hides threshold container with fade animation
+        gestureDetector = GestureDetector(requireContext(), object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                if (thresholdContainer.visibility == View.VISIBLE) {
+                    val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+                    thresholdContainer.startAnimation(fadeOut)
+                    thresholdContainer.visibility = View.GONE
+                } else {
+                    val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+                    thresholdContainer.startAnimation(fadeIn)
+                    thresholdContainer.visibility = View.VISIBLE
+                }
+                return true
+            }
+        })
+
+        previewView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            true
+        }
+
+        // 🔹 Hide threshold container when tapping outside
+        view.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN && thresholdContainer.visibility == View.VISIBLE) {
+                val location = IntArray(2)
+                thresholdContainer.getLocationOnScreen(location)
+                val x = location[0]
+                val y = location[1]
+                val w = thresholdContainer.width
+                val h = thresholdContainer.height
+
+                if (!(event.rawX >= x && event.rawX <= x + w &&
+                            event.rawY >= y && event.rawY <= y + h)) {
+                    val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+                    thresholdContainer.startAnimation(fadeOut)
+                    thresholdContainer.visibility = View.GONE
+                }
+            }
+            false
+        }
 
         resultTextView.setOnClickListener {
             isSingleLabelMode = !isSingleLabelMode

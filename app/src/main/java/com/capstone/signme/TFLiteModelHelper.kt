@@ -20,16 +20,17 @@ class TFLiteModelHelper(
     private val context: Context,
     private val modelName: String,
     private val labelsName: String,
-    private val detectorListener: DetectorListener? = null
+    private val detectorListener: DetectorListener? = null,
+    var confidenceThreshold: Float = 0.50F   // 🔹 dynamic threshold
 ) {
     companion object {
         private const val INPUT_MEAN = 0f
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.75F
-        private const val IOU_THRESHOLD = 0.75F
+        private const val IOU_THRESHOLD = 0.50F
     }
+
 
     private var interpreter: Interpreter? = null
     private var labels = mutableListOf<String>()
@@ -54,7 +55,6 @@ class TFLiteModelHelper(
         options.numThreads = 4
         options.setUseNNAPI(true)
         interpreter = Interpreter(model, options)
-        interpreter = Interpreter(model, options)
 
         // Get input shape
         val inputShape = interpreter?.getInputTensor(0)?.shape() ?: return
@@ -65,17 +65,17 @@ class TFLiteModelHelper(
         val outputShape = interpreter?.getOutputTensor(0)?.shape() ?: return
         isYolo = outputShape.size >= 3
 
-            val inputStream: InputStream = context.assets.open(labelsName)
-            val reader = BufferedReader(InputStreamReader(inputStream))
+        val inputStream: InputStream = context.assets.open(labelsName)
+        val reader = BufferedReader(InputStreamReader(inputStream))
 
-            var line: String? = reader.readLine()
-            while (line != null && line != "") {
-                labels.add(line)
-                line = reader.readLine()
-            }
-            reader.close()
-            inputStream.close()
-            numClasses = labels.size
+        var line: String? = reader.readLine()
+        while (line != null && line != "") {
+            labels.add(line)
+            line = reader.readLine()
+        }
+        reader.close()
+        inputStream.close()
+        numClasses = labels.size
     }
 
     private fun loadModelFile(context: Context, modelName: String): MappedByteBuffer {
@@ -92,7 +92,6 @@ class TFLiteModelHelper(
         interpreter?.close()
         interpreter = null
     }
-
 
     // Enhanced detection method that returns bounding boxes
     fun detect(frame: Bitmap): List<BoundingBox> {
@@ -140,8 +139,7 @@ class TFLiteModelHelper(
             }
 
             val result = mutableListOf<BoundingBox>()
-            if (maxIdx >= 0 && maxConf > CONFIDENCE_THRESHOLD) {
-                // Create a single bounding box for the entire image with classification result
+            if (maxIdx >= 0 && maxConf > confidenceThreshold) {   // 🔹 now uses dynamic threshold
                 result.add(
                     BoundingBox(
                         x1 = 0.1f, y1 = 0.1f, x2 = 0.9f, y2 = 0.9f,
@@ -176,16 +174,16 @@ class TFLiteModelHelper(
                 arrayIdx += numElements
             }
 
-            if (maxConf > CONFIDENCE_THRESHOLD) {
+            if (maxConf > confidenceThreshold) {   // 🔹 now uses dynamic threshold
                 val clsName = if (maxIdx < labels.size) labels[maxIdx] else "Unknown"
-                val cx = array[c] // 0
-                val cy = array[c + numElements] // 1
+                val cx = array[c]
+                val cy = array[c + numElements]
                 val w = array[c + numElements * 2]
                 val h = array[c + numElements * 3]
-                val x1 = cx - (w/2F)
-                val y1 = cy - (h/2F)
-                val x2 = cx + (w/2F)
-                val y2 = cy + (h/2F)
+                val x1 = cx - (w / 2F)
+                val y1 = cy - (h / 2F)
+                val x2 = cx + (w / 2F)
+                val y2 = cy + (h / 2F)
 
                 // Validate bounding box coordinates
                 if (x1 < 0F || x1 > 1F) continue
@@ -212,7 +210,7 @@ class TFLiteModelHelper(
         val sortedBoxes = boxes.sortedByDescending { it.cnf }.toMutableList()
         val selectedBoxes = mutableListOf<BoundingBox>()
 
-        while(sortedBoxes.isNotEmpty()) {
+        while (sortedBoxes.isNotEmpty()) {
             val first = sortedBoxes.first()
             selectedBoxes.add(first)
             sortedBoxes.remove(first)
@@ -245,5 +243,4 @@ class TFLiteModelHelper(
         fun onEmptyDetect()
         fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)
     }
-
 }
