@@ -25,7 +25,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
     private var currentModelIndex = 0
 
-    // List of models and labels
+    // models and labels
     private val models = listOf(
         Pair("alphabets.tflite", "alphabetslabel.txt"),
         Pair("filipino.tflite", "filipinolabel.txt"),
@@ -43,8 +43,6 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
     private lateinit var switchCameraButton: ImageButton
     private lateinit var listPopupButton: Button
     private lateinit var resultTextView: TextView
-
-    // 🔹 Threshold UI
     private lateinit var thresholdContainer: View
     private lateinit var thresholdSeekBar: SeekBar
     private lateinit var thresholdText: TextView
@@ -59,13 +57,16 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
 
     private val handler = Handler(Looper.getMainLooper())
 
-    private val wordBuffer = StringBuilder()
-    private var lastUpdateTime = 0L
-    private var lastDetectedLabel: String? = null
-    private var isSingleLabelMode = false
+    private val activeLabels = mutableListOf<String>()
 
-    // 🔹 Gesture detector for double-tap
+    private var isSingleLabelMode = false
     private lateinit var gestureDetector: GestureDetector
+
+    private var lastDetectedLabel: String? = null
+    private var lastDetectionTime = 0L
+    private val debounceTime = 3000L // 1.5 seconds
+
+    private val displayDuration = 15000L // 15 seconds
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_camera, container, false)
@@ -76,22 +77,17 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         flashButton = view.findViewById(R.id.flash_button)
         switchCameraButton = view.findViewById(R.id.switch_camera_button)
         listPopupButton = view.findViewById(R.id.list_popup_button)
-
-        // 🔹 Threshold UI
         thresholdContainer = view.findViewById(R.id.threshold_container)
         thresholdSeekBar = view.findViewById(R.id.threshold_seekbar)
         thresholdText = view.findViewById(R.id.threshold_text)
 
-        // 🔹 Set initial button text to current model name
         listPopupButton.text = modelNames[currentModelIndex]
 
-        // Initialize with default model
         initializeDetector(models[currentModelIndex].first, models[currentModelIndex].second)
 
-        // Setup popup menu for model switching
         listPopupButton.setOnClickListener { showModelPopupMenu(it) }
 
-        // Setup camera controls
+        // camera controls
         setupCameraControls()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -120,7 +116,6 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
                 val (newModel, newLabels) = models[currentModelIndex]
                 initializeDetector(newModel, newLabels)
 
-                // 🔹 Update button text to reflect mode
                 listPopupButton.text = modelNames[currentModelIndex]
 
                 Toast.makeText(requireContext(), "Switched to ${modelNames[currentModelIndex]}", Toast.LENGTH_SHORT).show()
@@ -228,9 +223,8 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
     }
 
     private fun setupThresholdSeekBar() {
-        // default threshold = 50%
         detector.confidenceThreshold = 0.50f
-        thresholdSeekBar.progress = 10 // because 40% + 10 = 50%
+        thresholdSeekBar.progress = 10
         thresholdText.text = "50%"
 
         thresholdSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -258,7 +252,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 🔹 Double-tap shows/hides threshold container with fade animation
+        // shows/hides threshold
         gestureDetector = GestureDetector(requireContext(), object : GestureDetector.SimpleOnGestureListener() {
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 if (thresholdContainer.visibility == View.VISIBLE) {
@@ -279,7 +273,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
             true
         }
 
-        // 🔹 Hide threshold container when tapping outside
+        //  Hide threshold when tapping outside
         view.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN && thresholdContainer.visibility == View.VISIBLE) {
                 val location = IntArray(2)
@@ -306,6 +300,7 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
         }
     }
 
+    // 🔹 Main detection logic
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
         activity?.runOnUiThread {
             overlayView.apply {
@@ -317,42 +312,41 @@ class CameraFragment : Fragment(), TFLiteModelHelper.DetectorListener {
                 val detectedLabel = boundingBoxes.first().clsName
                 val currentTime = System.currentTimeMillis()
 
-                if (detectedLabel == lastDetectedLabel) return@runOnUiThread
+                // Debounce: ignore duplicate within 1.5s
+                if (detectedLabel == lastDetectedLabel &&
+                    (currentTime - lastDetectionTime) < debounceTime
+                ) return@runOnUiThread
+
                 lastDetectedLabel = detectedLabel
+                lastDetectionTime = currentTime
 
                 if (isSingleLabelMode) {
                     resultTextView.text = detectedLabel
                 } else {
-                    if (detectedLabel.length == 1) {
-                        if (currentTime - lastUpdateTime > 2000) wordBuffer.append(" ")
-                        wordBuffer.append(detectedLabel)
-                    } else {
-                        wordBuffer.append(" $detectedLabel ")
-                    }
+                    // Add new label to queue
+                    activeLabels.add(detectedLabel)
+                    updateDisplayedText()
 
-                    lastUpdateTime = currentTime
-
-                    val wordText = wordBuffer.toString().trim()
-                    val maxLines = 2
-                    val maxCharactersPerLine = 20
-                    val lines = wordText.chunked(maxCharactersPerLine)
-                    val displayedLines = if (lines.size > maxLines) lines.takeLast(maxLines) else lines
-
-                    resultTextView.text = displayedLines.joinToString("\n")
-
-                    handler.removeCallbacks(clearTextRunnable)
-                    handler.postDelayed(clearTextRunnable, 6000)
+                    // Schedule removal after 6 seconds
+                    handler.postDelayed({
+                        activeLabels.remove(detectedLabel)
+                        updateDisplayedText()
+                        Log.d("GestureQueue", "Removed $detectedLabel after 6s")
+                    }, displayDuration)
                 }
             }
         }
     }
 
-    private val clearTextRunnable = Runnable {
-        activity?.runOnUiThread {
-            wordBuffer.clear()
-            resultTextView.text = ""
-            Log.d("WordFormation", "Full word cleared after 6 seconds")
-        }
+    // 🔹 Update TextView with rolling labels
+    private fun updateDisplayedText() {
+        val maxLines = 2
+        val maxCharactersPerLine = 20
+        val wordText = activeLabels.joinToString(" ")
+        val lines = wordText.chunked(maxCharactersPerLine)
+        val displayedLines = if (lines.size > maxLines) lines.takeLast(maxLines) else lines
+
+        resultTextView.text = displayedLines.joinToString("\n")
     }
 
     companion object {
